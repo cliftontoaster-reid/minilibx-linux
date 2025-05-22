@@ -1,4 +1,4 @@
-#!/usr/bin/env sh
+#!/usr/bin/env bash
 
 # This very basic script simulate user inputs for the CI
 # Feel free to update, improve or remove it if proper
@@ -15,7 +15,7 @@ LIGHT_CYAN="\033[96m"
 logging() {
 	local type=$1
 	shift
-	printf "${LIGHT_CYAN}${BOLD}run_tests${RESET} [%b] : %b\n" "$type" "$*"
+	printf "${LIGHT_CYAN}${BOLD}run_tests${RESET} [%b] : %b\n" "${type}" "$*"
 }
 log_info() {
 	logging "${LIGHT_GREEN}info${RESET}" "$@"
@@ -30,16 +30,19 @@ PID=""
 # to properly kill child process executed in background on exit
 at_exit() {
 	status=$?
-	[ $status -eq 0 ] && log_info "Seem all went well" && exit 0
-	# Code for non-zero exit:
-	if ! kill -s TERM "$PID" 2>/dev/null || ! wait "$PID"; then
-		log_error "Pid [$PID] died with status $status "
+	if [[ ${status} -eq 0 ]]; then
+		log_info "Seem all went well"
+		exit 0
 	fi
-	log_error "Something went wrong. Pid [$PID] has been killed. Status code $status"
+	# Code for non-zero exit:
+	if ! kill -s TERM "${PID}" 2>/dev/null || ! wait "${PID}"; then
+		log_error "Pid [${PID}] died with status ${status} "
+	fi
+	log_error "Something went wrong. Pid [${PID}] has been killed. Status code ${status}"
 }
 # to properly quit from ctrl+c (SIGINT Signal)
 sigint_handler() {
-	kill -s TERM "$PID"
+	kill -s TERM "${PID}"
 	wait
 	log_info "Tests abort"
 	exit 1
@@ -50,23 +53,22 @@ test_default_main() {
 	${MAKE} -f Makefile.gen all
 	./mlx-test &
 	PID="$!"
-	log_info "./mlx-test running in background, pid:" $PID
+	log_info "./mlx-test running in background, pid:" "${PID}"
 
 	i=25 # waiting 25s mlx-test to be ready for inputs.
-	while [ $i -gt 0 ]; do
-		if ! ps -p $PID >/dev/null; then
-			wait $PID
+	while [[ ${i} -gt 0 ]]; do
+		if ! ps -p "${PID}" >/dev/null; then
+			wait "${PID}"
 		fi
-		log_info "countdown" $i
+		log_info "countdown" "${i}"
 		sleep 1
 		i=$((i - 1))
 	done
 	log_info 'Ready to "just play" using xdotool'
-	wid1=$(xdotool search --name Title1)
 	wid2=$(xdotool search --name Title2)
 	wid3=$(xdotool search --name Title3)
 
-	xdotool windowfocus $wid3
+	xdotool windowfocus "${wid3}"
 	log_info "Focus Win3: Testing move mouse 100 100"
 	xdotool mousemove 100 100
 	log_info "Focus Win3: Testing move mouse 200 200"
@@ -75,16 +77,16 @@ test_default_main() {
 	xdotool key Escape
 
 	log_info "Focus Win2: Pressing escape to stop program"
-	xdotool windowfocus $wid2
+	xdotool windowfocus "${wid2}"
 	xdotool key Escape
 }
 
 main() {
 	case $(uname) in
-	FreeBSD) MAKE=gmake ;;
-	*) MAKE=make ;;
+	FreeBSD) MAKE="gmake" ;;
+	*) MAKE="make" ;;
 	esac
-	cd $(dirname $0)
+	cd "$(dirname "$0")"
 	trap at_exit EXIT
 	trap sigint_handler INT
 
